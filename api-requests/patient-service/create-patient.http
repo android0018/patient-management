@@ -1,10 +1,11 @@
 ### GET request to example server
 POST http://localhost:4008/api/patients
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
-  "name":"John Doe kafka test6",
-  "email":"kafka_test6@example.com",
+  "name":"John Doe kafka test8",
+  "email":"kafka_test8@example.com",
   "address":"123 main street",
   "dateOfBirth":"1995-11-28",
   "registeredDate":"2024-11-28"
