@@ -9,6 +9,8 @@ import com.pm.patientservice.kafka.kafkaProducer;
 import com.pm.patientservice.mapper.PatientMapper;
 import com.pm.patientservice.model.Patient;
 import com.pm.patientservice.repository.PatientRepository;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -29,12 +31,23 @@ public class PatientService {
         this.kafkaProducer = kafkaProducer;
     }
 
+    /**
+     * Get all patients with caching
+     * Cache key: 'all', TTL: 10 minutes
+     */
+    @Cacheable(value = "patients", key = "'all'")
     public List<PatientResponseDTO> getPatients(){
-        List<Patient> patients = patientRepository.findAll();
-        List<PatientResponseDTO> patientResponseDTOS=patients.stream().map(patient -> PatientMapper.toDTO(patient)).toList();
-        return patientResponseDTOS;
+        System.out.println("DB HIT");
+        return patientRepository.findAll()
+                .stream()
+                .map(PatientMapper::toDTO)
+                .toList();
     }
 
+    /**
+     * Create a new patient and evict cache
+     */
+    @CacheEvict(value = "patients", allEntries = true)
     public PatientResponseDTO createPatient(PatientRequestDTO patientRequestDTO){
 
         if(patientRepository.existsByEmail(patientRequestDTO.getEmail())){
@@ -49,6 +62,10 @@ public class PatientService {
         return PatientMapper.toDTO(newPatient);
     }
 
+    /**
+     * Update patient and evict cache
+     */
+    @CacheEvict(value = "patients", allEntries = true)
     public PatientResponseDTO updatePatient(UUID id, PatientRequestDTO patientRequestDTO){
         Patient patient = patientRepository.findById(id).orElseThrow(()-> new PatientNotFoundException("Patient not found with id: "+ id));
         if(patientRepository.existsByEmailAndIdNot(patientRequestDTO.getEmail(),id)){
@@ -58,11 +75,16 @@ public class PatientService {
         patient.setAddress(patientRequestDTO.getAddress());
         patient.setEmail(patientRequestDTO.getEmail());
         patient.setDateOfBirth(LocalDate.parse(patientRequestDTO.getDateOfBirth()));
-        Patient updatedPatient = patientRepository.save(patient);
+        patientRepository.save(patient);
         return PatientMapper.toDTO(patient);
     }
 
+    /**
+     * Delete patient and evict cache
+     */
+    @CacheEvict(value = "patients", allEntries = true)
     public void deletePatient(UUID id){
-       patientRepository.deleteById(id);
+        patientRepository.deleteById(id);
     }
 }
+
